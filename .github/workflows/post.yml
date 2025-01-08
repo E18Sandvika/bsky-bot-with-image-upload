@@ -1,9 +1,9 @@
 name: "Post to Bluesky"
 
-on: workflow_dispatch
-# on:
-#   schedule:
-#     - cron: "30 5,17 * * *"
+on:
+  schedule:
+    - cron: "0 * * * *"  # This runs every hour at minute 0
+  workflow_dispatch:  # This allows manual triggering of the workflow
 
 jobs:
   build:
