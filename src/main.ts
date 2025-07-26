@@ -53,32 +53,43 @@ async function getImageDescription(): Promise<string> {
     const client = createClient(endpoint, new AzureKeyCredential(token));
     const imageDataUrl = getImageDataUrl(path.join(todayFolder, imageFileName), 'jpg');
 
-    const response = await client.path("/chat/completions").post({
-        body: {
-            messages: [
-                { role: "system", content: "You are a helpful assistant that describes images in detail." },
-                {
-                    role: "user", content: [
-                        {type: "text", text: "Describe this image in less than 200 characters:"},
-                        {type: "image_url", image_url: {url: imageDataUrl, detail: "low"}}
-                    ]
-                }
-            ],
-            model: modelName
-        }
-    });
-
-    if (response.status !== "200" && 'error' in response && typeof response.error === 'object' && response.error !== null && 'message' in response.error) {
-        throw new Error((response.error as { message: string }).message);
+    let response;
+    try {
+        response = await client.path("/chat/completions").post({
+            body: {
+                messages: [
+                    { role: "system", content: "You are a helpful assistant that describes images in detail." },
+                    {
+                        role: "user", content: [
+                            { type: "text", text: "Describe this image in less than 200 characters:" },
+                            { type: "image_url", image_url: { url: imageDataUrl, detail: "low" } }
+                        ]
+                    }
+                ],
+                model: modelName
+            }
+        });
+    } catch (err) {
+        console.error("Azure API request failed:", err);
+        throw new Error("Azure API request failed");
     }
 
-    if ('choices' in response.body) {
-        if ('choices' in response.body && response.body.choices[0].message.content) {
-            return response.body.choices[0].message.content;
+    if (response.status !== "200") {
+        console.error("Azure API error response:", response);
+        if ('error' in response && typeof response.error === 'object' && response.error !== null && 'message' in response.error) {
+            throw new Error((response.error as { message: string }).message);
+        } else {
+            throw new Error("Azure API returned non-200 status: " + response.status);
         }
+    }
+
+    if ('choices' in response.body && response.body.choices[0].message.content) {
+        return response.body.choices[0].message.content;
     } else {
+        console.error("Unexpected Azure API response format:", response.body);
         throw new Error("Unexpected response format");
     }
+    // fallback
     return "No description available.";
 }
 
