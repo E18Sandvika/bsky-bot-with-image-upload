@@ -14,7 +14,7 @@ const endpoint = "https://models.inference.ai.azure.com";
 const modelName = "gpt-4o";
 const todayFolder = 'today';
 const imageFileName = 'todays_image.jpg';
-const imageUrl = 'https://webkamera.atlas.vegvesen.no/public/kamera?id=0229009_1';
+const imageUrl = 'https://kamera.atlas.vegvesen.no/api/images/0229009_1';
 const bskyHandle = process.env["BSKY_HANDLE"];
 const bskyPassword = process.env["BSKY_PASSWORD"];
 
