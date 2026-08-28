@@ -24,15 +24,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-modules-
       - run: npm ci
-      # Install GitHub Copilot CLI (requires COPILOT_PAT with 'Copilot Requests' permission)
+      # Install GitHub Copilot CLI (uses automatic GITHUB_TOKEN in Actions)
       - name: Install GitHub Copilot CLI
         run: npm install -g @github/copilot
-        env:
-          GH_TOKEN: ${{ secrets.COPILOT_PAT }}
       - run: npm run build
       - name: Send post
         run: npm start
         env:
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
-          GH_TOKEN: ${{ secrets.COPILOT_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
