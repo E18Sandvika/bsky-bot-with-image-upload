@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import https from 'https';
 import { IncomingMessage } from 'http';
+import { spawnSync } from 'child_process';
 import { AtpAgent } from '@atproto/api';
 dotenv.config();
 
@@ -45,19 +46,33 @@ async function getImageDescription(): Promise<string> {
     console.error(`Image file not found: ${imageFilePath}`);
     return "Kamerabilde — trafikk og værtilstand ulest.";
   }
-  try {
-    const { execSync } = await import('child_process');
-    const prompt = "Describe this traffic camera image in less than 200 characters in Norwegian, mentioning weather and traffic conditions:";
-    const output = execSync(
-      `copilot --model auto -p "${prompt}" --attachment "${imageFilePath}" --no-ask-user 2>&1`,
-      { encoding: 'utf8', timeout: 60000 }
-    ).trim();
-    console.log("Copilot description received:", output);
-    return output || "Kamerabilde — trafikk og værtilstand ulest.";
-  } catch (err: any) {
-    console.error("Copilot CLI error:", err.message?.split('\n')[0]);
+  const prompt = "Describe this traffic camera image in less than 200 characters in Norwegian, mentioning weather and traffic conditions:";
+  console.log(`Calling copilot CLI with model auto, attachment: ${imageFilePath}`);
+  const proc = spawnSync('copilot', [
+    '--model', 'auto',
+    '-p', prompt,
+    '--attachment', imageFilePath,
+    '--no-ask-user'
+  ], {
+    encoding: 'utf8',
+    timeout: 60000,
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  if (proc.error) {
+    console.error("Copilot CLI spawn error:", proc.error.message);
     return "Kamerabilde — trafikk og værtilstand ulest.";
   }
+  if (proc.status !== 0) {
+    const stderr = (proc.stderr as Buffer).toString().trim();
+    const stdout = (proc.stdout as Buffer).toString().trim();
+    console.error(`Copilot CLI exited with code ${proc.status}`);
+    if (stdout) console.error("stdout:", stdout);
+    if (stderr) console.error("stderr:", stderr);
+    return "Kamerabilde — trafikk og værtilstand ulest.";
+  }
+  const output = (proc.stdout as Buffer).toString().trim();
+  console.log("Copilot description received:", output);
+  return output || "Kamerabilde — trafikk og værtilstand ulest.";
 }
 
 function getImageDataUrl(imageFile: string, imageFormat: string): string {
@@ -82,14 +97,12 @@ function convertDataURIToUint8Array(dataURI: string): Uint8Array {
 }
 
 async function getPostText(): Promise<string> {
-  // Ensure the 'today' folder exists
   if (!fs.existsSync(todayFolder)) {
     fs.mkdirSync(todayFolder);
   }
   if (!bskyHandle || !bskyPassword) {
     throw new Error("Bluesky handle or password is not defined");
   }
-  // Step 1: Download the image to the 'today' folder
   const imageDest = path.join(todayFolder, imageFileName);
   try {
     await downloadImage(imageUrl, imageDest);
@@ -98,7 +111,6 @@ async function getPostText(): Promise<string> {
     console.error("Error downloading the image.");
     return "Error downloading the image.";
   }
-  // Step 2: Get image description from Copilot CLI
   let imageDescription: string;
   try {
     imageDescription = await getImageDescription() || "No description available.";
@@ -107,17 +119,14 @@ async function getPostText(): Promise<string> {
     console.error("Error getting image description.");
     return "Error getting image description.";
   }
-  // Truncate the description to 300 graphemes
   const maxGraphemes = 300;
   if (imageDescription.length > maxGraphemes) {
     imageDescription = imageDescription.slice(0, maxGraphemes) + '...';
   }
-  // Step 3: Upload the image as a blob to Bluesky
   const agent = new AtpAgent({ service: 'https://bsky.social' });
   await agent.login({ identifier: bskyHandle, password: bskyPassword });
   const imageDataUrl = getImageDataUrl(imageDest, 'jpg');
   const { data } = await agent.uploadBlob(convertDataURIToUint8Array(imageDataUrl), { encoding: 'image/jpeg' });
-  // Step 4: Create a post with the image embedded
   await agent.post({
     text: imageDescription,
     embed: {
