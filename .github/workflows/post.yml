@@ -10,6 +10,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      CopilotRequests: write
     steps:
       - uses: actions/checkout@v7
       - name: Use Node.js
