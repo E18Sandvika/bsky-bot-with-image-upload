@@ -26,10 +26,12 @@ jobs:
       - run: npm ci
       - name: Install GitHub Copilot CLI
         run: npm install -g @github/copilot
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_PAT }}
       - run: npm run build
       - name: Send post
         run: npm start
         env:
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.COPILOT_PAT }}
