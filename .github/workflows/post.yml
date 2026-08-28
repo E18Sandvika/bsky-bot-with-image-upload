@@ -24,7 +24,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-modules-
       - run: npm ci
-      # Install GitHub Copilot CLI (uses automatic GITHUB_TOKEN in Actions)
       - name: Install GitHub Copilot CLI
         run: npm install -g @github/copilot
       - run: npm run build
