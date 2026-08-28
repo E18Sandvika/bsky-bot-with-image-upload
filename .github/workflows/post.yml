@@ -1,36 +1,38 @@
 name: "Post to Bluesky"
-
 on:
   schedule:
     - cron: "0 * * * *"  # Runs every hour at minute 0
   workflow_dispatch:  # Allows manual triggering of the workflow
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
-      - uses: actions/checkout@v3  # Checkout the repository
-
+      - uses: actions/checkout@v7
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
           node-version-file: ".nvmrc"
-
       - name: Cache npm dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-modules-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-modules-
-
-      - run: npm ci  # Install dependencies using npm ci
-      - run: npm run build  # Run the build script
-
+      - run: npm ci
+      # Ensure GitHub Copilot CLI is available for image description
+      - name: Install GitHub Copilot CLI
+        run: npm install -g @github/copilot
+        env:
+          GH_TOKEN: ${{ secrets.KEY_GITHUB_TOKEN }}
+      - run: npm run build
       - name: Send post
-        run: npm start  # Execute the start script
+        run: npm start
         env:
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
-          KEY_GITHUB_TOKEN: ${{ secrets.KEY_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.KEY_GITHUB_TOKEN }}
