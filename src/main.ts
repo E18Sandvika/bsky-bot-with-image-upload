@@ -63,14 +63,14 @@ async function getImageDescription(): Promise<string> {
     return "Kamerabilde — trafikk og værtilstand ulest.";
   }
   if (proc.status !== 0) {
-    const stderr = (proc.stderr as Buffer).toString().trim();
-    const stdout = (proc.stdout as Buffer).toString().trim();
+    const stderr = Buffer.from(proc.stderr).toString().trim();
+    const stdout = Buffer.from(proc.stdout).toString().trim();
     console.error(`Copilot CLI exited with code ${proc.status}`);
     if (stdout) console.error("stdout:", stdout);
     if (stderr) console.error("stderr:", stderr);
     return "Kamerabilde — trafikk og værtilstand ulest.";
   }
-  const output = (proc.stdout as Buffer).toString().trim();
+  const output = Buffer.from(proc.stdout).toString().trim();
   console.log("Copilot description received:", output);
   return output || "Kamerabilde — trafikk og værtilstand ulest.";
 }
