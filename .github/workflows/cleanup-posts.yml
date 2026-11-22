@@ -1,5 +1,8 @@
 name: Cleanup Bluesky Posts
 
+# Note: Posts cannot be edited on Bluesky (would break likes/replies)
+# This workflow deletes posts with model selection prefixes and reposts with cleaned text
+
 on:
   workflow_dispatch:
     inputs:
