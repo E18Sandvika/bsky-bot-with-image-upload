@@ -10,8 +10,7 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "start": "node .",
-    "dev": "nodenv .",
-    "cleanup": "ts-node src/cleanup-posts.ts"
+    "dev": "nodenv ."
   },
   "keywords": [
     "bluesky",
@@ -30,7 +29,6 @@
     "@types/node": "^22.10.5",
     "eslint": "^9.15.0",
     "node-env-run": "^4.0.2",
-    "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.15.0"
   },
