@@ -2,6 +2,10 @@
  * Script to clean up old Bluesky posts by removing copilot CLI model selection prefixes.
  * Finds posts from 2026-10-29 onwards and strips the "● Auto selected..." or "● Copilot Fusion selected..." prefix.
  * 
+ * Since Bluesky doesn't allow editing posts (would break likes/replies), this script:
+ * 1. Deletes posts with model selection prefixes
+ * 2. Re-posts with cleaned text
+ * 
  * Usage: node dist/cleanup-posts.js
  * Requires: BSKY_HANDLE and BSKY_PASSWORD environment variables
  */
@@ -26,13 +30,9 @@ function stripModelPrefix(output: string): string {
   if (markerIndex !== -1) {
     const afterMarker = output.slice(markerIndex + 2).trim();
     // Remove model selection info up to first period followed by blank line or capital letter
-    const sentenceEnd = afterMarker.match(/.*\.[ \n]*[ \n]*([A-ZÆØÅa-zæøå\.\!])/s);
-    if (sentenceEnd) {
-      // Find where the actual content starts
-      const fullMatch = afterMarker.match(/.*\.[ \n]*[ \n]*/s);
-      if (fullMatch) {
-        return afterMarker.slice(fullMatch[0].length).trim();
-      }
+    const fullMatch = afterMarker.match(/.*\.[ \n]*[ \n]*/s);
+    if (fullMatch) {
+      return afterMarker.slice(fullMatch[0].length).trim();
     }
     return afterMarker;
   }
@@ -101,15 +101,24 @@ async function main() {
       if (needsCleanup(post.record.text)) {
         const cleaned = cleanText(post.record.text);
         if (cleaned !== post.record.text) {
-          console.log(`Editing post ${post.uri}`);
-          console.log(`  Before: ${post.record.text.substring(0, 100)}...`);
-          console.log(`  After: ${cleaned.substring(0, 100)}...\n`);
+          const postUri = post.uri;
+          const rkey = post.uri.split('/').pop();
+          
+          console.log(`Deleting post ${postUri}`);
+          console.log(`  Original: ${post.record.text.substring(0, 100)}...`);
+          console.log(`  Cleaned: ${cleaned.substring(0, 100)}...\n`);
 
-          await (agent.com.atproto.repo as any).updateRecord({
+          // Delete the old post using agent.post which has access to com.atproto.repo
+          await (agent as any).com.atproto.repo.deleteRecord({
             repo: handle,
             collection: 'app.bsky.feed.post',
-            rkey: post.record.id,
-            record: { ...post.record, text: cleaned },
+            rkey: rkey,
+          });
+
+          // Re-post with cleaned text using agent.post convenience method
+          await agent.post({
+            text: cleaned,
+            createdAt: new Date().toISOString(),
           });
 
           editedCount++;
@@ -117,7 +126,7 @@ async function main() {
       }
     }
 
-    console.log(`\nCleanup complete: ${editedCount} posts edited, ${checkedCount} posts checked`);
+    console.log(`\nCleanup complete: ${editedCount} posts deleted & reposted, ${checkedCount} posts checked`);
   } catch (err) {
     console.error('Error fetching posts:', err);
     process.exit(1);
