@@ -1,0 +1,37 @@
+name: Cleanup Bluesky Posts
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no actual edits)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run cleanup script
+        env:
+          BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
+          BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
+        run: |
+          echo "BSKY_HANDLE is set: ${BSKY_HANDLE:+yes}"
+          echo "Running cleanup..."
+          node dist/cleanup-posts.js || echo "Script exited with code $?"
