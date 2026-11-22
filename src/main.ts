@@ -47,20 +47,28 @@ function saveImageToFile(response: IncomingMessage, dest: string, resolve: () =>
 function stripModelPrefix(output: string): string {
   // Remove "● " and any model selection text up to the first period followed by space and capital letter
   // Pattern: "● ...plan. Actual description..." -> "Actual description..."
-  const match = output.match(/●\s+.+?\.\s+([A-ZÆØÅa-zæøå].*)/);
+  // Use [\\s\\n]+ to handle newlines and multiple spaces
+  const match = output.match(/●\s+.+?\.\s*[\n]*\s*([A-ZÆØÅa-zæøå].*)/s);
   if (match) {
     return match[1].trim();
   }
   // Fallback: try removing everything before "● " (inclusive)
   const markerIndex = output.indexOf('● ');
   if (markerIndex !== -1) {
-    const afterMarker = output.slice(markerIndex + 2).trim();
-    // Remove model selection info up to first period
-    const sentenceEnd = afterMarker.match(/.*\.\s+/);
+    let afterMarker = output.slice(markerIndex + 2).trim();
+    // Remove model selection info up to first period followed by blank line or capital letter
+    const sentenceEnd = afterMarker.match(/.*\.[ \n]*[ \n]*([A-ZÆØÅa-zæøå\.\!])/s);
     if (sentenceEnd) {
-      return afterMarker.slice(sentenceEnd[0].length).trim();
+      afterMarker = afterMarker.slice(sentenceEnd[0].length - 1).trim();
     }
+    // Remove leading blank lines
+    afterMarker = afterMarker.replace(/^[ \n]+/, '');
     return afterMarker;
+  }
+  // No marker found - check if starts with Norwegian words (could be raw copilot output)
+  const norwegianStart = output.match(/^(Sol|Tør|Det|Klar|Regn|Byen|Veien).*$/s);
+  if (norwegianStart) {
+    return output.trim();
   }
   return output.trim();
 }
