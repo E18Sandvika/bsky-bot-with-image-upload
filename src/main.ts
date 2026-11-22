@@ -40,6 +40,31 @@ function saveImageToFile(response: IncomingMessage, dest: string, resolve: () =>
   });
 }
 
+/**
+ * Strips model selection prefix from copilot CLI output.
+ * Copilot adds text like "● Copilot Fusion selected MAI Code 2 Flash..." before the actual response.
+ */
+function stripModelPrefix(output: string): string {
+  // Remove "● " and any model selection text up to the first period followed by space and capital letter
+  // Pattern: "● ...plan. Actual description..." -> "Actual description..."
+  const match = output.match(/●\s+.+?\.\s+([A-ZÆØÅa-zæøå].*)/);
+  if (match) {
+    return match[1].trim();
+  }
+  // Fallback: try removing everything before "● " (inclusive)
+  const markerIndex = output.indexOf('● ');
+  if (markerIndex !== -1) {
+    const afterMarker = output.slice(markerIndex + 2).trim();
+    // Remove model selection info up to first period
+    const sentenceEnd = afterMarker.match(/.*\.\s+/);
+    if (sentenceEnd) {
+      return afterMarker.slice(sentenceEnd[0].length).trim();
+    }
+    return afterMarker;
+  }
+  return output.trim();
+}
+
 async function getImageDescription(): Promise<string> {
   const imageFilePath = path.join(todayFolder, imageFileName);
   if (!fs.existsSync(imageFilePath)) {
@@ -70,7 +95,8 @@ async function getImageDescription(): Promise<string> {
     if (stderr) console.error("stderr:", stderr);
     return "Kamerabilde — trafikk og værtilstand ulest.";
   }
-  const output = Buffer.from(proc.stdout).toString().trim();
+  const rawOutput = Buffer.from(proc.stdout).toString().trim();
+  const output = stripModelPrefix(rawOutput);
   console.log("Copilot description received:", output);
   return output || "Kamerabilde — trafikk og værtilstand ulest.";
 }
